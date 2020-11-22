@@ -18,7 +18,7 @@ import { CurrentWeatherComponent } from './components/current-weather/current-we
 @NgModule({
   declarations: [
     HomePage,
-    CurrentWeatherComponent
+    CurrentWeatherComponent,
   ],
   imports: [
     CommonModule,

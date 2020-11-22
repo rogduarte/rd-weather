@@ -1,15 +1,15 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormControl, Validators } from '@angular/forms';
 
 import { select, Store } from '@ngrx/store';
-import { Observable, Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { Observable, Subject, combineLatest } from 'rxjs';
+import { takeUntil, map } from 'rxjs/operators';
 
-import { Bookmark } from 'src/app/shared/models/bookmark.models';
 import { CityWeather } from 'src/app/shared/models/weather.model';
-
+import { Bookmark } from 'src/app/shared/models/bookmark.models';
 import * as fromHomeActions from '../../state/home.actions';
 import * as fromHomeSelectors from '../../state/home.selectors';
+import * as fromBookmarksSelectors from '../../../bookmarks/state/bookmark.selectors';
 
 @Component({
   selector: 'jv-home',
@@ -22,38 +22,51 @@ export class HomePage implements OnInit, OnDestroy {
   cityWeather: CityWeather;
   loading$: Observable<boolean>;
   error$: Observable<boolean>;
-  
-  searchControl:FormControl;
+
+  bookmarksList$: Observable<Bookmark[]>;
+  isCurrentFavorite$: Observable<boolean>;
+
+  searchControl: FormControl;
+
   text: string;
 
   private componentDestroyed$ = new Subject();
 
+  constructor(private store: Store) {
+  }
 
-  constructor(private store: Store) { }
+  ngOnInit() {
+    this.searchControl = new FormControl('', Validators.required);
 
-  ngOnInit(): void {
-    this.searchControl = new FormControl('',Validators.required);
-
-    this.store
-    .pipe(
-      select(fromHomeSelectors.selecCurrentWeather),
-      takeUntil(this.componentDestroyed$),
-      )
-    .subscribe(value => this.cityWeather = value);
+    this.cityWeather$ = this.store.pipe(select(fromHomeSelectors.selecCurrentWeather));
+    this.cityWeather$
+      .pipe(takeUntil(this.componentDestroyed$))
+      .subscribe(value => this.cityWeather = value);
     this.loading$ = this.store.pipe(select(fromHomeSelectors.selecCurrentWeatherLoading));
     this.error$ = this.store.pipe(select(fromHomeSelectors.selecCurrentWeatherError));
 
+    this.bookmarksList$ = this.store.pipe(select(fromBookmarksSelectors.selectBookmarksList));
+
+    this.isCurrentFavorite$ = combineLatest([this.cityWeather$, this.bookmarksList$])
+      .pipe(
+        map(([current, bookmarksList]) => {
+          if (!!current) {
+            return bookmarksList.some(bookmark => bookmark.id === current.city.id);
+          }
+          return false;
+        }),
+      );
   }
 
-  ngOnDestroy () {
-      this.componentDestroyed$.next();
-      this.componentDestroyed$.unsubscribe();
+  ngOnDestroy() {
+    this.componentDestroyed$.next();
+    this.componentDestroyed$.unsubscribe();
+    this.store.dispatch(fromHomeActions.clearHomeState());
   }
 
-  doSearch(){
+  doSearch() {
     const query = this.searchControl.value;
     this.store.dispatch(fromHomeActions.loadCurrentWeather({ query }));
-  
   }
 
   onToggleBookmark() {
@@ -62,7 +75,6 @@ export class HomePage implements OnInit, OnDestroy {
     bookmark.name = this.cityWeather.city.name;
     bookmark.country = this.cityWeather.city.country;
     bookmark.coord = this.cityWeather.city.coord;
-
+    this.store.dispatch(fromHomeActions.toggleBookmark({ entity: bookmark }));
   }
-
 }

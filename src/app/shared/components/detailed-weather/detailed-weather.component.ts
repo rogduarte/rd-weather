@@ -6,7 +6,7 @@ import { Weather } from '../../models/weather.model';
   selector: 'jv-detailed-weather',
   templateUrl: './detailed-weather.component.html',
   styleUrls: ['./detailed-weather.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DetailedWeatherComponent {
 
